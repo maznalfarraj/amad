@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: eb6ef7e41e3319f4ca8cdd433fc21d0f
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 375248
+  packageName: Modern Apartment
+  packageVersion: 1.0
+  assetPath: Assets/Zeps3D/ModernApartment/Materials/m_glass.mat
+  uploadId: 921696

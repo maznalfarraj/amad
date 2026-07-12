@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 8b62485f540b8234788f488a8ac93229
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 375248
+  packageName: Modern Apartment
+  packageVersion: 1.0
+  assetPath: Assets/Zeps3D/ModernApartment/Materials/m_mesh_black.mat
+  uploadId: 921696

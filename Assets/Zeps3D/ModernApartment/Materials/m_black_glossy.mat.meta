@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 13fc783ae2c22da4a8043424c5348a8f
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 375248
+  packageName: Modern Apartment
+  packageVersion: 1.0
+  assetPath: Assets/Zeps3D/ModernApartment/Materials/m_black_glossy.mat
+  uploadId: 921696
