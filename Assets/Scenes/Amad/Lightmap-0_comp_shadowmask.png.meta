@@ -1,12 +1,5 @@
 fileFormatVersion: 2
-guid: 7769f157372ffac4fbfbfebbc9e9f02f
-AssetOrigin:
-  serializedVersion: 1
-  productId: 375248
-  packageName: Modern Apartment
-  packageVersion: 1.0
-  assetPath: Assets/Zeps3D/ModernApartment/DemoScene/ModernApartment_demo/Lightmap-0_comp_dir.png
-  uploadId: 921696
+guid: a860a801d0969c548ba33f363247b8fd
 TextureImporter:
   internalIDToNameTable: []
   externalObjects: {}
@@ -58,10 +51,10 @@ TextureImporter:
   spritePixelsToUnits: 100
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
-  alphaUsage: 1
+  alphaUsage: 0
   alphaIsTransparency: 0
   spriteTessellationDetail: -1
-  textureType: 12
+  textureType: 11
   textureShape: 1
   singleChannelComponent: 0
   flipbookRows: 1
@@ -101,7 +94,7 @@ TextureImporter:
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
   - serializedVersion: 4
-    buildTarget: WebGL
+    buildTarget: Android
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
@@ -114,11 +107,11 @@ TextureImporter:
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
   - serializedVersion: 4
-    buildTarget: Android
-    maxTextureSize: 4096
+    buildTarget: WebGL
+    maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
-    textureCompression: 2
+    textureCompression: 1
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
