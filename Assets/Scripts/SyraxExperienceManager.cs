@@ -183,6 +183,49 @@ PrepareCurrentStage();
             reactionTime
         );
     }
+  public void OnSpeechRecognized(
+    string json
+)
+{
+    if (string.IsNullOrWhiteSpace(json))
+        return;
+
+    RecognitionResult result =
+        new RecognitionResult(json);
+
+    if (result.Partial)
+        return;
+
+    if (
+        result.Phrases == null ||
+        result.Phrases.Length == 0
+    )
+    {
+        Debug.LogWarning(
+            $"Vosk returned no phrases:\n{json}"
+        );
+
+        return;
+    }
+
+    string recognizedText =
+        result.Phrases[0].Text;
+
+    if (string.IsNullOrWhiteSpace(
+        recognizedText
+    ))
+    {
+        return;
+    }
+
+    Debug.Log(
+        $"Player said: {recognizedText}"
+    );
+
+    SendUserSpeech(
+        recognizedText
+    );
+}
 
     public void EndCallWithoutSharingOtp(float reactionTime)
     {

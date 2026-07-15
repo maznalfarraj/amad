@@ -1,24 +1,19 @@
 using System.Collections;
 using TMPro;
 using UnityEngine;
-using UnityEngine.Events;
 using UnityEngine.UI;
 
 public class PhoneCallStageController : MonoBehaviour
 {
-
-    [Header("Manager")]
+    [Header("Systems")]
     [SerializeField]
     private SyraxExperienceManager manager;
 
     [SerializeField]
     private PiperTTSClient piperTTSClient;
 
-
-private void HandleChatResponse(ChatResponse response)
-{
-    piperTTSClient.Speak(response.reply_text);
-}
+    [SerializeField]
+    private VoskBridge voskBridge;
 
     [Header("Windows")]
     [SerializeField]
@@ -60,9 +55,6 @@ private void HandleChatResponse(ChatResponse response)
     [SerializeField]
     private float otpVisibleDuration = 4f;
 
-    [Header("Text To Speech")]
-    public UnityEvent<string> onSpeakText;
-
     private float stageStartTime;
     private float callStartTime;
 
@@ -74,22 +66,36 @@ private void HandleChatResponse(ChatResponse response)
 
     private void Awake()
     {
-        answerButton.onClick.AddListener(
-            AnswerCall
-        );
+        if (answerButton != null)
+        {
+            answerButton.onClick.AddListener(
+                AnswerCall
+            );
+        }
 
-        rejectButton.onClick.AddListener(
-            RejectCall
-        );
+        if (rejectButton != null)
+        {
+            rejectButton.onClick.AddListener(
+                RejectCall
+            );
+        }
 
-        endCallButton.onClick.AddListener(
-            EndCall
-        );
+        if (endCallButton != null)
+        {
+            endCallButton.onClick.AddListener(
+                EndCall
+            );
+        }
     }
 
     private void OnEnable()
     {
-        manager.OnChatResponseReceived += HandleChatResponse;
+        if (manager != null)
+        {
+            manager.OnChatResponseReceived +=
+                HandleChatResponse;
+        }
+
         ResetStage();
         LoadStageText();
 
@@ -98,8 +104,10 @@ private void HandleChatResponse(ChatResponse response)
 
     private void Update()
     {
-        if (!callActive)
+        if (!callActive || callTimerText == null)
+        {
             return;
+        }
 
         float elapsed =
             Time.time - callStartTime;
@@ -124,11 +132,25 @@ private void HandleChatResponse(ChatResponse response)
         callActive = false;
         otpAppeared = false;
 
-        incomingCallWindow.SetActive(true);
-        activeCallWindow.SetActive(false);
-        otpWindow.SetActive(false);
+        if (incomingCallWindow != null)
+        {
+            incomingCallWindow.SetActive(true);
+        }
 
-        endCallButton.gameObject.SetActive(false);
+        if (activeCallWindow != null)
+        {
+            activeCallWindow.SetActive(false);
+        }
+
+        if (otpWindow != null)
+        {
+            otpWindow.SetActive(false);
+        }
+
+        if (endCallButton != null)
+        {
+            endCallButton.gameObject.SetActive(false);
+        }
 
         if (callTimerText != null)
         {
@@ -143,47 +165,78 @@ private void HandleChatResponse(ChatResponse response)
 
         if (stage == null)
         {
-            incomingDialogueText.text =
-                "مكالمة واردة";
+            if (incomingDialogueText != null)
+            {
+                incomingDialogueText.text =
+                    "Incoming call";
+            }
 
-            activeDialogueText.text =
-                "جارٍ تحميل المكالمة...";
+            if (activeDialogueText != null)
+            {
+                activeDialogueText.text =
+                    "Loading call...";
+            }
 
             return;
         }
 
-        incomingDialogueText.text =
-            string.IsNullOrWhiteSpace(
-                stage.title
-            )
-                ? "مكالمة واردة"
-                : stage.title;
+        if (incomingDialogueText != null)
+        {
+            incomingDialogueText.text =
+                string.IsNullOrWhiteSpace(
+                    stage.title
+                )
+                    ? "Incoming call"
+                    : stage.title;
+        }
 
-        activeDialogueText.text =
-            stage.opening_text;
+        if (activeDialogueText != null)
+        {
+            activeDialogueText.text =
+                stage.opening_text;
+        }
     }
 
     private void AnswerCall()
     {
-        manager.StopStageAudio();
+        if (decisionSent || callActive)
+        {
+            return;
+        }
 
-        incomingCallWindow.SetActive(false);
-        activeCallWindow.SetActive(true);
+        manager?.StopStageAudio();
+
+        if (incomingCallWindow != null)
+        {
+            incomingCallWindow.SetActive(false);
+        }
+
+        if (activeCallWindow != null)
+        {
+            activeCallWindow.SetActive(true);
+        }
 
         callStartTime = Time.time;
         callActive = true;
 
-        string text =
-            manager.CurrentSession
+        voskBridge?.StartAcceptingSpeech();
+
+        string openingText =
+            manager?.CurrentSession
                 ?.current_stage
                 ?.opening_text;
 
-        if (!string.IsNullOrWhiteSpace(text))
+        if (!string.IsNullOrWhiteSpace(openingText))
         {
-            activeDialogueText.text = text;
+            if (activeDialogueText != null)
+            {
+                activeDialogueText.text =
+                    openingText;
+            }
 
-            // يرسل النص لأداة Text-to-Speech.
-            onSpeakText?.Invoke(text);
+            piperTTSClient?.Speak(
+                openingText
+            );
         }
 
         otpCoroutine =
@@ -198,36 +251,99 @@ private void HandleChatResponse(ChatResponse response)
             otpDelay
         );
 
+        if (
+            decisionSent ||
+            !callActive
+        )
+        {
+            yield break;
+        }
+
         otpAppeared = true;
 
-        otpText.text =
-            "رمز التحقق: 4821\n" +
-            "لا تشارك الرمز مع أي شخص";
+        if (otpText != null)
+        {
+            otpText.text =
+                "Verification code: 4821\n" +
+                "Do not share this code with anyone.";
+        }
 
-        otpWindow.SetActive(true);
+        if (otpWindow != null)
+        {
+            otpWindow.SetActive(true);
+        }
 
-        endCallButton.gameObject.SetActive(true);
+        if (endCallButton != null)
+        {
+            endCallButton.gameObject.SetActive(true);
+        }
 
         yield return new WaitForSeconds(
             otpVisibleDuration
         );
 
-        otpWindow.SetActive(false);
+        if (otpWindow != null)
+        {
+            otpWindow.SetActive(false);
+        }
 
-        // زر إنهاء المكالمة يبقى ظاهرًا.
-        endCallButton.gameObject.SetActive(true);
+        // End Call يبقى ظاهرًا.
+        if (endCallButton != null)
+        {
+            endCallButton.gameObject.SetActive(true);
+        }
+    }
+
+    private void HandleChatResponse(
+        ChatResponse response
+    )
+    {
+        if (
+            response == null ||
+            decisionSent ||
+            !callActive ||
+            string.IsNullOrWhiteSpace(
+                response.reply_text
+            )
+        )
+        {
+            return;
+        }
+
+        if (activeDialogueText != null)
+        {
+            activeDialogueText.text =
+                response.reply_text;
+        }
+
+        piperTTSClient?.Speak(
+            response.reply_text
+        );
+
+        // السيرفر اعتبر كلام اللاعب استجابة غير آمنة.
+        if (
+            response.conversation_status ==
+            "user_unsafe"
+        )
+        {
+            PlayerSharedOtp();
+        }
     }
 
     private void RejectCall()
     {
         if (decisionSent)
+        {
             return;
+        }
 
         decisionSent = true;
 
-        manager.StopStageAudio();
+        StopVoiceSystems();
 
-        manager.RejectUnknownCall(
+        manager?.StopStageAudio();
+
+        manager?.RejectUnknownCall(
             GetReactionTime()
         );
     }
@@ -245,23 +361,34 @@ private void HandleChatResponse(ChatResponse response)
         decisionSent = true;
         callActive = false;
 
-        manager.EndCallWithoutSharingOtp(
+        StopVoiceSystems();
+
+        manager?.EndCallWithoutSharingOtp(
             GetReactionTime()
         );
     }
 
-    // استدعيها من Speech-to-Text إذا اكتشف أن اللاعب قال الرمز.
     public void PlayerSharedOtp()
     {
         if (decisionSent)
+        {
             return;
+        }
 
         decisionSent = true;
         callActive = false;
 
-        manager.ShareOtp(
+        StopVoiceSystems();
+
+        manager?.ShareOtp(
             GetReactionTime()
         );
+    }
+
+    private void StopVoiceSystems()
+    {
+        voskBridge?.StopAcceptingSpeech();
+        piperTTSClient?.StopSpeaking();
     }
 
     private float GetReactionTime()
@@ -271,8 +398,15 @@ private void HandleChatResponse(ChatResponse response)
 
     private void OnDisable()
     {
-        manager.OnChatResponseReceived -= HandleChatResponse;
+        if (manager != null)
+        {
+            manager.OnChatResponseReceived -=
+                HandleChatResponse;
+        }
+
         callActive = false;
+
+        StopVoiceSystems();
 
         if (otpCoroutine != null)
         {

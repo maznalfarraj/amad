@@ -2260,6 +2260,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PhoneCallStageController
   manager: {fileID: 1061760151}
+  piperTTSClient: {fileID: 0}
+  voskBridge: {fileID: 0}
   incomingCallWindow: {fileID: 360399646}
   activeCallWindow: {fileID: 132114091}
   otpWindow: {fileID: 1870421898}
@@ -2272,9 +2274,6 @@ MonoBehaviour:
   endCallButton: {fileID: 1799127228}
   otpDelay: 6
   otpVisibleDuration: 4
-  onSpeakText:
-    m_PersistentCalls:
-      m_Calls: []
 --- !u!1 &734400815
 GameObject:
   m_ObjectHideFlags: 0
@@ -2486,6 +2485,7 @@ Transform:
   - {fileID: 329464496}
   - {fileID: 201226652}
   - {fileID: 1451983522}
+  - {fileID: 1014179646}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &811294245
@@ -2964,6 +2964,37 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 951649042}
   m_CullTransparentMesh: 1
+--- !u!1 &1014179645
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1014179646}
+  m_Layer: 0
+  m_Name: Vosk System
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1014179646
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1014179645}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 800574651}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1061760150
 GameObject:
   m_ObjectHideFlags: 0
