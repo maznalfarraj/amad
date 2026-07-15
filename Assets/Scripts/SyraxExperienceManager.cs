@@ -6,6 +6,7 @@ using UnityEngine.Networking;
 
 public class SyraxExperienceManager : MonoBehaviour
 {
+    public event Action<ChatResponse> OnChatResponseReceived;
     [Header("Server")]
     [SerializeField] private string serverBaseUrl = "http://localhost:3000";
 
@@ -291,6 +292,7 @@ PrepareCurrentStage();
             );
 
         Debug.Log($"AI Reply: {response.reply_text}");
+        OnChatResponseReceived?.Invoke(response);
 
         // يرسل فريق Unity response.reply_text إلى Text-to-Speech.
     }

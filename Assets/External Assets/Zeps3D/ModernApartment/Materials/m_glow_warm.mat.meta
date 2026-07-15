@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 713955194ae91fa4d841e0c58459bac6
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 375248
+  packageName: Modern Apartment
+  packageVersion: 1.0
+  assetPath: Assets/Zeps3D/ModernApartment/Materials/m_glow_warm.mat
+  uploadId: 921696

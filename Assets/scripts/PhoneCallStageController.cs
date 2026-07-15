@@ -6,9 +6,19 @@ using UnityEngine.UI;
 
 public class PhoneCallStageController : MonoBehaviour
 {
+
     [Header("Manager")]
     [SerializeField]
     private SyraxExperienceManager manager;
+
+    [SerializeField]
+    private PiperTTSClient piperTTSClient;
+
+
+private void HandleChatResponse(ChatResponse response)
+{
+    piperTTSClient.Speak(response.reply_text);
+}
 
     [Header("Windows")]
     [SerializeField]
@@ -79,6 +89,7 @@ public class PhoneCallStageController : MonoBehaviour
 
     private void OnEnable()
     {
+        manager.OnChatResponseReceived += HandleChatResponse;
         ResetStage();
         LoadStageText();
 
@@ -260,6 +271,7 @@ public class PhoneCallStageController : MonoBehaviour
 
     private void OnDisable()
     {
+        manager.OnChatResponseReceived -= HandleChatResponse;
         callActive = false;
 
         if (otpCoroutine != null)
