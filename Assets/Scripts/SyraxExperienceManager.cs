@@ -14,10 +14,32 @@ public class SyraxExperienceManager : MonoBehaviour
     [SerializeField] private GameObject websiteObject;
     [SerializeField] private GameObject messageObject;
 
+    [Header("Phone Interaction")]
+[SerializeField]
+private PhoneInteraction phoneInteraction;
+
+    [Header("Stage Audio")]
+    [SerializeField] private AudioSource stageAudioSource;
+    [SerializeField] private AudioClip websiteAlertSound;
+    [SerializeField] private AudioClip messageNotificationSound;
+
+    [Tooltip("If enabled, the phone ringtone keeps looping until the player answers or rejects the call.")]
+
     [Header("Completion")]
     [SerializeField] private GameObject completionPanel;
     [SerializeField] private TMP_Text completionMessageText;
     [SerializeField] private TMP_Text finalScoreText;
+
+    [Header("Stage Transition")]
+    [Tooltip("Full-screen CanvasGroup used for fade in/out between stages.")]
+    [SerializeField] private CanvasGroup transitionCanvasGroup;
+
+    [Tooltip("Optional text displayed during the transition.")]
+    [SerializeField] private TMP_Text transitionTitleText;
+
+    [SerializeField, Min(0.1f)] private float fadeDuration = 0.55f;
+    [SerializeField, Min(0f)] private float transitionHoldDuration = 0.35f;
+    [SerializeField, Min(0.1f)] private float stageEntranceDuration = 0.45f;
 
     public SyraxSession CurrentSession { get; private set; }
 
@@ -41,6 +63,13 @@ public class SyraxExperienceManager : MonoBehaviour
 
         if (completionPanel != null)
             completionPanel.SetActive(false);
+
+        if (transitionCanvasGroup != null)
+        {
+            transitionCanvasGroup.alpha = 0f;
+            transitionCanvasGroup.blocksRaycasts = false;
+            transitionCanvasGroup.interactable = false;
+        }
 
         StartCoroutine(LoadActiveSession());
     }
@@ -73,13 +102,39 @@ public class SyraxExperienceManager : MonoBehaviour
             yield break;
         }
 
-        currentStageIndex = 0;
-        totalScore = 0;
+       currentStageIndex = 0;
+totalScore = 0;
 
-        ActivateCurrentStage();
+PrepareCurrentStage();
     }
 
-    private void ActivateCurrentStage()
+    private void PrepareCurrentStage()
+{
+    DisableAllStages();
+
+    string stageType =
+        fixedStageOrder[currentStageIndex];
+
+    if (stageType == "PhoneCall")
+    {
+        if (phoneInteraction != null)
+        {
+            phoneInteraction.StartPhoneCallInteraction();
+        }
+        else
+        {
+            Debug.LogError(
+                "PhoneInteraction is not assigned."
+            );
+        }
+
+        return;
+    }
+
+    ActivateCurrentStage();
+}
+
+   public void ActivateCurrentStage()
     {
         DisableAllStages();
 
@@ -95,11 +150,15 @@ public class SyraxExperienceManager : MonoBehaviour
             case "Website":
                 if (websiteObject != null)
                     websiteObject.SetActive(true);
+
+                PlayOneShotStageSound(websiteAlertSound);
                 break;
 
             case "Message":
                 if (messageObject != null)
                     messageObject.SetActive(true);
+
+                PlayOneShotStageSound(messageNotificationSound);
                 break;
 
             default:
@@ -114,6 +173,8 @@ public class SyraxExperienceManager : MonoBehaviour
 
     public void RejectUnknownCall(float reactionTime)
     {
+        StopStageAudio();
+
         CompleteStage(
             "PHONE_CALL_DECISION",
             "rejected_unknown_call",
@@ -124,6 +185,8 @@ public class SyraxExperienceManager : MonoBehaviour
 
     public void EndCallWithoutSharingOtp(float reactionTime)
     {
+        StopStageAudio();
+
         CompleteStage(
             "PHONE_CALL_DECISION",
             "ended_call_without_sharing_otp",
@@ -134,6 +197,8 @@ public class SyraxExperienceManager : MonoBehaviour
 
     public void ShareOtp(float reactionTime)
     {
+        StopStageAudio();
+
         CompleteStage(
             "PHONE_CALL_DECISION",
             "shared_otp",
@@ -227,7 +292,7 @@ public class SyraxExperienceManager : MonoBehaviour
 
         Debug.Log($"AI Reply: {response.reply_text}");
 
-        // ???? ???? Unity response.reply_text ??? Text-to-Speech.
+        // يرسل فريق Unity response.reply_text إلى Text-to-Speech.
     }
 
     private void CompleteStage(
@@ -237,7 +302,7 @@ public class SyraxExperienceManager : MonoBehaviour
         float reactionTime
     )
     {
-        if (isSendingDecision || CurrentSession == null)
+        if (isSendingDecision)
             return;
 
         int pointsAwarded =
@@ -266,63 +331,319 @@ public class SyraxExperienceManager : MonoBehaviour
     {
         isSendingDecision = true;
 
-        string url = $"{serverBaseUrl}/api/event";
+        string completionMessage = "";
 
-        EventRequest body = new EventRequest
+        // Try to send the decision to the server when a valid session exists.
+        // If the internet/server is unavailable, the experience continues locally.
+        if (CurrentSession != null &&
+            !string.IsNullOrWhiteSpace(CurrentSession.session_id))
         {
-            session_id = CurrentSession.session_id,
-            action = action,
-            decision = decision,
-            reaction_time = reactionTime,
-            stage_completed = true,
+            string url = $"{serverBaseUrl}/api/event";
 
-            details = new EventDetails
+            EventRequest body = new EventRequest
             {
-                stage_type = fixedStageOrder[currentStageIndex],
-                stage_number = currentStageIndex + 1,
-                is_correct = isCorrect,
-                points_awarded = pointsAwarded,
-                total_score = totalScore,
-                maximum_score = MaximumScore
+                session_id = CurrentSession.session_id,
+                action = action,
+                decision = decision,
+                reaction_time = reactionTime,
+                stage_completed = true,
+
+                details = new EventDetails
+                {
+                    stage_type = fixedStageOrder[currentStageIndex],
+                    stage_number = currentStageIndex + 1,
+                    is_correct = isCorrect,
+                    points_awarded = pointsAwarded,
+                    total_score = totalScore,
+                    maximum_score = MaximumScore
+                }
+            };
+
+            using UnityWebRequest request =
+                CreateJsonPostRequest(
+                    url,
+                    JsonUtility.ToJson(body)
+                );
+
+            request.timeout = 4;
+
+            yield return request.SendWebRequest();
+
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                EventResponse response =
+                    JsonUtility.FromJson<EventResponse>(
+                        request.downloadHandler.text
+                    );
+
+               if (response != null)
+{
+    completionMessage =
+        response.completion_message;
+
+    if (response.next_stage != null)
+    {
+        CurrentSession.current_stage =
+            response.next_stage;
+    }
+}
+
+                Debug.Log(
+                    "SYRAX: Decision sent to the server successfully."
+                );
             }
-        };
-
-        using UnityWebRequest request =
-            CreateJsonPostRequest(
-                url,
-                JsonUtility.ToJson(body)
-            );
-
-        yield return request.SendWebRequest();
-
-        if (request.result != UnityWebRequest.Result.Success)
-        {
-            isSendingDecision = false;
-
-            Debug.LogError(
-                $"SYRAX event error: {request.error}\n" +
-                $"Response: {request.downloadHandler?.text}"
-            );
-            yield break;
-        }
-
-        EventResponse response =
-            JsonUtility.FromJson<EventResponse>(
-                request.downloadHandler.text
-            );
-
-        currentStageIndex++;
-
-        if (currentStageIndex >= fixedStageOrder.Length)
-        {
-            ShowCompletion(response.completion_message);
+            else
+            {
+                Debug.LogWarning(
+                    "SYRAX: Internet or server unavailable. " +
+                    "Continuing the experience locally."
+                );
+            }
         }
         else
         {
-            ActivateCurrentStage();
+            Debug.LogWarning(
+                "SYRAX: No active server session. " +
+                "Continuing the experience locally."
+            );
         }
 
+        // Always move to the next stage, whether the request succeeded or failed.
+        currentStageIndex++;
+
+        yield return StartCoroutine(
+            PlayStageTransition(completionMessage)
+        );
+
         isSendingDecision = false;
+    }
+
+    private IEnumerator PlayStageTransition(
+        string completionMessage
+    )
+    {
+        StopStageAudio();
+
+        if (transitionCanvasGroup != null)
+        {
+            transitionCanvasGroup.blocksRaycasts = true;
+
+            if (transitionTitleText != null)
+            {
+                transitionTitleText.text =
+                    GetTransitionTitle();
+            }
+
+            yield return FadeCanvasGroup(
+                transitionCanvasGroup,
+                transitionCanvasGroup.alpha,
+                1f,
+                fadeDuration
+            );
+        }
+
+        DisableAllStages();
+
+        if (transitionHoldDuration > 0f)
+        {
+            yield return new WaitForSeconds(
+                transitionHoldDuration
+            );
+        }
+
+        if (currentStageIndex >= fixedStageOrder.Length)
+        {
+            ShowCompletion(completionMessage);
+        }
+        else
+        {
+         PrepareCurrentStage();
+            GameObject activeObject =
+                GetCurrentStageObject();
+
+            if (activeObject != null)
+            {
+                yield return StartCoroutine(
+                    AnimateStageEntrance(activeObject)
+                );
+            }
+        }
+
+        if (transitionCanvasGroup != null)
+        {
+            yield return FadeCanvasGroup(
+                transitionCanvasGroup,
+                transitionCanvasGroup.alpha,
+                0f,
+                fadeDuration
+            );
+
+            transitionCanvasGroup.blocksRaycasts = false;
+        }
+    }
+
+    private string GetTransitionTitle()
+    {
+        if (currentStageIndex >= fixedStageOrder.Length)
+        {
+            return "تم تحليل قراراتك";
+        }
+
+        string nextStage =
+            fixedStageOrder[currentStageIndex];
+
+        switch (nextStage)
+        {
+            case "Website":
+                return "وصلتك رسالة جديدة من البنك";
+
+            case "Message":
+                return "وصلتك رسالة واتساب جديدة";
+
+            default:
+                return "جارٍ تجهيز المرحلة التالية";
+        }
+    }
+
+    private GameObject GetCurrentStageObject()
+    {
+        if (currentStageIndex < 0 ||
+            currentStageIndex >= fixedStageOrder.Length)
+        {
+            return null;
+        }
+
+        switch (fixedStageOrder[currentStageIndex])
+        {
+            case "PhoneCall":
+                return phoneCallObject;
+
+            case "Website":
+                return websiteObject;
+
+            case "Message":
+                return messageObject;
+
+            default:
+                return null;
+        }
+    }
+
+    private IEnumerator FadeCanvasGroup(
+        CanvasGroup canvasGroup,
+        float from,
+        float to,
+        float duration
+    )
+    {
+        if (canvasGroup == null)
+            yield break;
+
+        if (duration <= 0f)
+        {
+            canvasGroup.alpha = to;
+            yield break;
+        }
+
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+
+            float t = Mathf.Clamp01(
+                elapsed / duration
+            );
+
+            // Smooth easing for a more polished transition.
+            t = t * t * (3f - 2f * t);
+
+            canvasGroup.alpha =
+                Mathf.Lerp(from, to, t);
+
+            yield return null;
+        }
+
+        canvasGroup.alpha = to;
+    }
+
+    private IEnumerator AnimateStageEntrance(
+        GameObject stageObject
+    )
+    {
+        if (stageObject == null)
+            yield break;
+
+        Transform stageTransform =
+            stageObject.transform;
+
+        Vector3 targetScale =
+            stageTransform.localScale;
+
+        Vector3 startScale =
+            targetScale * 0.94f;
+
+        stageTransform.localScale =
+            startScale;
+
+        float elapsed = 0f;
+
+        while (elapsed < stageEntranceDuration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+
+            float t = Mathf.Clamp01(
+                elapsed / stageEntranceDuration
+            );
+
+            // Ease-out-back gives a subtle premium pop effect.
+            float c1 = 1.70158f;
+            float c3 = c1 + 1f;
+            float eased =
+                1f +
+                c3 * Mathf.Pow(t - 1f, 3f) +
+                c1 * Mathf.Pow(t - 1f, 2f);
+
+            stageTransform.localScale =
+                Vector3.LerpUnclamped(
+                    startScale,
+                    targetScale,
+                    eased
+                );
+
+            yield return null;
+        }
+
+        stageTransform.localScale =
+            targetScale;
+    }
+
+   
+
+    private void PlayOneShotStageSound(AudioClip clip)
+    {
+        if (stageAudioSource == null ||
+            clip == null)
+        {
+            return;
+        }
+
+        stageAudioSource.Stop();
+        stageAudioSource.loop = false;
+        stageAudioSource.clip = null;
+        stageAudioSource.PlayOneShot(clip);
+    }
+
+    public void StopStageAudio()
+    {
+        if (stageAudioSource == null)
+        {
+            return;
+        }
+
+        stageAudioSource.Stop();
+        stageAudioSource.loop = false;
+        stageAudioSource.clip = null;
     }
 
     private void ShowCompletion(string serverCompletionMessage)
@@ -338,8 +659,8 @@ public class SyraxExperienceManager : MonoBehaviour
         string completionMessage =
             !string.IsNullOrWhiteSpace(serverCompletionMessage)
                 ? serverCompletionMessage
-                : $"????? ?? {playerName} ??????? ????? SYRAX. " +
-                  "?? ????? ???????? ?????? ???? ????? ???? ??????.";
+                : $"شكرًا يا {playerName} لإكمالك تجربة SYRAX. " +
+                  "تم تسجيل قراراتك، ويمكنك الآن زيارة لوحة الأداء.";
 
         if (completionPanel != null)
             completionPanel.SetActive(true);
