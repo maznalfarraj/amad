@@ -39,6 +39,10 @@ public class PiperTTSClient : MonoBehaviour
             RequestSpeech(text)
         );
     }
+    private void Start()
+{
+    Speak("Hello, this is a Piper test.");
+}
 
     public void StopSpeaking()
     {
@@ -184,10 +188,11 @@ public class PiperTTSClient : MonoBehaviour
         isSpeaking = false;
     }
 }
-
+   
 [Serializable]
 public class PiperRequest
 {
     public string text;
     public float length_scale = 1f;
+
 }
