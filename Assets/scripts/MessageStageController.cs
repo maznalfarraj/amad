@@ -163,7 +163,9 @@ public class MessageStageController : MonoBehaviour
                 "حول لي مبلغ بسرعة، أنا في موقف طارئ.";
         }
 
-        messageText.text = text;
+        // Shaped text for display; the TTS event gets the RAW string.
+        messageText.text =
+            SyraxArabicText.Fix(text);
 
         // يرسل رسالة الـAI إلى Text-to-Speech.
         onSpeakMessage?.Invoke(text);

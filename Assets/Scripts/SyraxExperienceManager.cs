@@ -637,7 +637,9 @@ private PhoneInteraction phoneInteraction;
             if (transitionTitleText != null)
             {
                 transitionTitleText.text =
-                    GetTransitionTitle();
+                    SyraxArabicText.Fix(
+                        GetTransitionTitle()
+                    );
             }
 
             yield return FadeCanvasGroup(
@@ -872,7 +874,8 @@ private PhoneInteraction phoneInteraction;
             completionPanel.SetActive(true);
 
         if (completionMessageText != null)
-            completionMessageText.text = completionMessage;
+            completionMessageText.text =
+                SyraxArabicText.Fix(completionMessage);
 
         if (finalScoreText != null)
             finalScoreText.text = $"{totalScore} / {MaxScore}";

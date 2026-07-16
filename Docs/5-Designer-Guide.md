@@ -26,6 +26,19 @@ Everything technical is wired. Your work is purely visual/audio.
 - Transition timing: `SyraxExperienceManager → Fade Duration / Hold / Entrance`.
 - Speaking speed: `Assets/Settings/SyraxConfig → Piper Length Scale`.
 
+## Arabic text — how it works
+- **Runtime texts** (AI dialogue, WhatsApp message, OTP, transitions,
+  completion) are shaped automatically — you do nothing.
+- **Static texts you type in the editor**: TMP shows raw Arabic disconnected.
+  Either type the text through an Arabic fixer tool first, use an image, or
+  ask a programmer to route it through `SyraxArabicText.Fix()`.
+- **Font**: `Assets/Fonts/Tahoma SDF` is the global Arabic fallback — every
+  TMP text can render Arabic without changing its font. Want a prettier
+  Arabic font (Cairo, Noto Naskh…)? Import the .ttf, create a TMP Font Asset
+  (dynamic), and add it to TMP Settings > Fallback Font Assets — or swap it
+  on specific texts directly.
+- Prefer **right alignment** on Arabic text fields for a natural look.
+
 ## What you MUST NOT touch
 - `SYRAX SYSTEM/SyraxExperienceManager`, `Vosk System`, `Piper System` components.
 - Any field marked "no" in `4-Inspector-Documentation.md`.

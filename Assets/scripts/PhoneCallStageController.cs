@@ -241,17 +241,21 @@ public class PhoneCallStageController : MonoBehaviour
         if (incomingDialogueText != null)
         {
             incomingDialogueText.text =
-                string.IsNullOrWhiteSpace(
-                    stage.title
-                )
-                    ? "Incoming call"
-                    : stage.title;
+                SyraxArabicText.Fix(
+                    string.IsNullOrWhiteSpace(
+                        stage.title
+                    )
+                        ? "Incoming call"
+                        : stage.title
+                );
         }
 
         if (activeDialogueText != null)
         {
             activeDialogueText.text =
-                stage.opening_text;
+                SyraxArabicText.Fix(
+                    stage.opening_text
+                );
         }
     }
 
@@ -382,9 +386,11 @@ public class PhoneCallStageController : MonoBehaviour
 
         if (otpText != null)
         {
-            otpText.text = string.Format(
-                otpMessageFormat,
-                currentOtpCode
+            otpText.text = SyraxArabicText.Fix(
+                string.Format(
+                    otpMessageFormat,
+                    currentOtpCode
+                )
             );
         }
 
@@ -443,7 +449,9 @@ public class PhoneCallStageController : MonoBehaviour
 
         if (activeDialogueText != null)
         {
-            activeDialogueText.text = dialogue;
+            // Fixed (shaped) text for DISPLAY only — TTS gets the raw string.
+            activeDialogueText.text =
+                SyraxArabicText.Fix(dialogue);
         }
 
         piperTTSClient?.Speak(dialogue);
