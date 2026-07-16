@@ -3298,6 +3298,7 @@ GameObject:
   - component: {fileID: 1014179649}
   - component: {fileID: 1014179648}
   - component: {fileID: 1014179647}
+  - component: {fileID: 1014179650}
   m_Layer: 0
   m_Name: Vosk System
   m_TagString: Untagged
@@ -3352,7 +3353,7 @@ MonoBehaviour:
   VoiceProcessor: {fileID: 1014179647}
   MaxAlternatives: 1
   MaxRecordLength: 5
-  AutoStart: 1
+  AutoStart: 0
   KeyPhrases: []
 --- !u!114 &1014179649
 MonoBehaviour:
@@ -3368,6 +3369,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::VoskBridge
   voskSpeechToText: {fileID: 1014179648}
   manager: {fileID: 1061760151}
+--- !u!114 &1014179650
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1014179645}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d4339f69c8a0c404495ecb936a92b660, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SyraxPermissions
+  voskSpeechToText: {fileID: 1014179648}
+  permissionTimeout: 60
 --- !u!1 &1061760150
 GameObject:
   m_ObjectHideFlags: 0

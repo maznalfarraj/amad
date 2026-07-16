@@ -21,7 +21,8 @@ public class SyraxDebugHotkeys : MonoBehaviour
     [SerializeField] private PhoneInteraction phoneInteraction;
     [SerializeField] private PhoneCallStageController phoneCallStageController;
 
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
+// Desktop-only: never active on the Quest (Android), even in development builds.
+#if UNITY_EDITOR || (DEVELOPMENT_BUILD && !UNITY_ANDROID)
     private void Start()
     {
         SyraxLogger.Log(

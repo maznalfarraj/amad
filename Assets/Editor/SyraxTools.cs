@@ -151,6 +151,93 @@ public static class SyraxTools
     }
 
     // ------------------------------------------------------------------
+    [MenuItem("SYRAX/Validate Quest Build")]
+    public static void ValidateQuestBuild()
+    {
+        var sb = new StringBuilder("[SYRAX] Quest 3 build readiness:\n");
+        int problems = 0;
+
+        // 1. Platform
+        bool android =
+            EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android;
+        Append(sb, android,
+            "Active platform is Android",
+            "Active platform is NOT Android — File > Build Settings > Android > Switch Platform",
+            ref problems);
+
+        // 2. Scene in build settings
+        bool sceneInBuild = false;
+        foreach (var s in EditorBuildSettings.scenes)
+            if (s.enabled && s.path.EndsWith("AmadMazen.unity")) sceneInBuild = true;
+        Append(sb, sceneInBuild,
+            "AmadMazen scene is in Build Settings",
+            "AmadMazen scene is MISSING from Build Settings",
+            ref problems);
+
+        // 3. IL2CPP + ARM64
+        var group = UnityEditor.Build.NamedBuildTarget.Android;
+        bool il2cpp = PlayerSettings.GetScriptingBackend(group) == ScriptingImplementation.IL2CPP;
+        bool arm64 = (PlayerSettings.Android.targetArchitectures & AndroidArchitecture.ARM64) != 0;
+        Append(sb, il2cpp, "Scripting backend is IL2CPP", "Scripting backend must be IL2CPP for Quest", ref problems);
+        Append(sb, arm64, "Target architecture includes ARM64", "ARM64 must be enabled for Quest", ref problems);
+
+        // 4. Vosk model in root StreamingAssets
+        bool model = System.IO.File.Exists(
+            Application.dataPath + "/StreamingAssets/vosk-model-small-en-us-0.15.zip");
+        Append(sb, model,
+            "Vosk model zip is in Assets/StreamingAssets",
+            "Vosk model zip NOT found in Assets/StreamingAssets",
+            ref problems);
+
+        // 5. Meta Quest OpenXR feature
+        bool quest = false;
+        string openXr = Application.dataPath + "/XR/Settings/OpenXRPackageSettings.asset";
+        if (System.IO.File.Exists(openXr))
+        {
+            string text = System.IO.File.ReadAllText(openXr);
+            int i = text.IndexOf("MetaQuestFeature Android");
+            quest = i >= 0 && text.IndexOf("m_enabled: 1", i) - i < 400 && text.IndexOf("m_enabled: 1", i) >= 0;
+        }
+        Append(sb, quest,
+            "OpenXR 'Meta Quest Support' feature enabled for Android",
+            "Meta Quest Support feature not confirmed — check Project Settings > XR Plug-in Management > OpenXR (Android tab)",
+            ref problems);
+
+        // 6. Config URLs must not be localhost for a headset build
+        var config = AssetDatabase.LoadAssetAtPath<SyraxConfig>(ConfigPath);
+        if (config != null)
+        {
+            bool urlsOk =
+                !config.backendBaseUrl.Contains("localhost") &&
+                !config.backendBaseUrl.Contains("127.0.0.1") &&
+                !config.piperSynthesizeUrl.Contains("localhost") &&
+                !config.piperSynthesizeUrl.Contains("127.0.0.1");
+            Append(sb, urlsOk,
+                $"SyraxConfig URLs point to a LAN IP ({config.backendBaseUrl})",
+                $"SyraxConfig still uses localhost ({config.backendBaseUrl}) — the Quest cannot reach it. Set the PC's LAN IP (ipconfig) before building.",
+                ref problems);
+        }
+        else
+        {
+            sb.AppendLine("  ❌ SyraxConfig asset missing!");
+            problems++;
+        }
+
+        sb.AppendLine(problems == 0
+            ? "READY — you can build for Quest 3 now."
+            : $"{problems} problem(s) to fix before building.");
+
+        if (problems == 0) Debug.Log(sb.ToString());
+        else Debug.LogWarning(sb.ToString());
+    }
+
+    private static void Append(StringBuilder sb, bool ok, string good, string bad, ref int problems)
+    {
+        sb.AppendLine(ok ? $"  ✅ {good}" : $"  ❌ {bad}");
+        if (!ok) problems++;
+    }
+
+    // ------------------------------------------------------------------
     [MenuItem("SYRAX/Select Config")]
     public static void SelectConfig()
     {

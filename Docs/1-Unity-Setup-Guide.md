@@ -35,10 +35,34 @@ Full PC smoke test: website "Begin Experience" → Play → Space → A → talk
 → 1 → 1 → completion panel. This component compiles out of release builds.
 
 ## Build (Meta Quest 3)
-- Platform: Android, ARM64, IL2CPP (already configured).
-- OpenXR + Meta Quest Support feature: enabled (already configured).
-- First run on headset: the Vosk model (~40 MB) unzips — expect a few seconds before STT is ready.
-- Mic permission: grant when prompted (RECORD_AUDIO is in the manifest automatically).
+
+**One-time prerequisite (NOT yet done):** this editor is missing the Android
+module. In **Unity Hub → Installs → (this Unity version) → Add Modules →
+check "Android Build Support" + "Android SDK & NDK Tools" + "OpenJDK"** →
+install → restart the editor. Then File > Build Settings > Android >
+**Switch Platform** (one-time re-import, can take a while).
+
+**Before every build, run `SYRAX → Validate Quest Build`** — it checks all of
+the following automatically:
+- Platform = Android, IL2CPP, ARM64 ✅ (already configured)
+- AmadMazen is the only enabled scene in Build Settings ✅ (already set —
+  the old `Amad.unity` was first in the list and has been disabled)
+- OpenXR + Meta Quest Support feature ✅ (already enabled)
+- Vosk model in StreamingAssets ✅
+- SyraxConfig URLs are a LAN IP, not localhost ✅ (currently
+  `http://192.168.8.175:3000` — re-check on the demo network with `ipconfig`)
+
+Quest-specific behavior already handled in code:
+- **Mic permission**: `SyraxPermissions` (on Vosk System) requests RECORD_AUDIO
+  on first launch and starts speech recognition only after it is granted.
+- **Mic device**: the PC uses mic index 2 (A50 headset); on Quest the index is
+  clamped to the only available device automatically.
+- **Debug hotkeys**: compiled out of ALL Android builds (even development
+  builds) — desktop/editor only.
+- First run on headset: the Vosk model (~40 MB) unzips — expect a few seconds
+  before STT is ready.
+- Windows Firewall: when Windows asks, ALLOW Node.js and Python on private
+  networks — otherwise the headset cannot reach the servers.
 
 ## Configuration (SyraxConfig asset)
 Everything tunable lives in `Assets/Settings/SyraxConfig.asset` — no URLs or keys in code:

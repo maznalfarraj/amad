@@ -142,6 +142,16 @@ public class VoiceProcessor : MonoBehaviour
             return;
         }
 
+        // SYRAX: clamp an out-of-range index instead of failing. The scene may
+        // be configured for a multi-mic PC (e.g. index 2), while the Quest has
+        // exactly one microphone (index 0).
+        if (MicrophoneIndex < 0 || MicrophoneIndex >= Devices.Count)
+        {
+            Debug.LogWarning(
+                $"Microphone index {MicrophoneIndex} not available ({Devices.Count} device(s)); using device 0: {Devices[0]}");
+            MicrophoneIndex = 0;
+        }
+
         CurrentDeviceIndex = MicrophoneIndex;
     }
 
