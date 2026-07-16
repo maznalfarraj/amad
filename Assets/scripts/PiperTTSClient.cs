@@ -5,7 +5,12 @@ using UnityEngine.Networking;
 
 public class PiperTTSClient : MonoBehaviour
 {
-    [Header("Piper Server")]
+    [Header("Configuration")]
+    [Tooltip("Central SYRAX config asset. When assigned, its Piper URL and length scale override the fields below.")]
+    [SerializeField]
+    private SyraxConfig config;
+
+    [Header("Piper Server (legacy fallback — prefer SyraxConfig)")]
     [SerializeField]
     private string piperServerUrl =
         "http://localhost:5000/synthesize";
@@ -20,6 +25,14 @@ public class PiperTTSClient : MonoBehaviour
     private bool isSpeaking;
 
     public bool IsSpeaking => isSpeaking;
+
+    private string EffectiveUrl =>
+        config != null && !string.IsNullOrWhiteSpace(config.piperSynthesizeUrl)
+            ? config.piperSynthesizeUrl
+            : piperServerUrl;
+
+    private float EffectiveLengthScale =>
+        config != null ? config.piperLengthScale : lengthScale;
 
     public void Speak(string text)
     {
@@ -39,10 +52,16 @@ public class PiperTTSClient : MonoBehaviour
             RequestSpeech(text)
         );
     }
+
     private void Start()
-{
-    Speak("Hello, this is a Piper test.");
-}
+    {
+        // Startup test speech is opt-in via SyraxConfig (was previously
+        // unconditional, which made the scene talk on every launch).
+        if (config != null && config.piperStartupTest)
+        {
+            Speak("Piper text to speech is ready.");
+        }
+    }
 
     public void StopSpeaking()
     {
@@ -75,7 +94,7 @@ public class PiperTTSClient : MonoBehaviour
             new PiperRequest
             {
                 text = text,
-                length_scale = lengthScale
+                length_scale = EffectiveLengthScale
             };
 
         string json =
@@ -83,7 +102,7 @@ public class PiperTTSClient : MonoBehaviour
 
         using UnityWebRequest request =
             new UnityWebRequest(
-                piperServerUrl,
+                EffectiveUrl,
                 UnityWebRequest.kHttpVerbPOST
             );
 

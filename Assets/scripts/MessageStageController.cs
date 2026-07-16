@@ -47,6 +47,20 @@ public class MessageStageController : MonoBehaviour
     [Header("Text To Speech")]
     public UnityEvent<string> onSpeakMessage;
 
+    [Header("Designer Events (hook anything — no code needed)")]
+    [Tooltip("Fired the moment the player chooses to CALL the mother to verify. Hook the mother's real voice line ('لا، أنا ما طلبت أي فلوس!'), animations, effects…")]
+    public UnityEvent onCallMotherChosen;
+
+    [Tooltip("Fired when the verification call finishes, just before the experience advances. Hook closing effects.")]
+    public UnityEvent onVerifiedCallFinished;
+
+    [Tooltip("Fired the moment the player TRANSFERS the money without verifying. Hook alarm/regret effects, custom ending sequence…")]
+    public UnityEvent onTransferMoneyChosen;
+
+    [Tooltip("Seconds to wait AFTER onTransferMoneyChosen fires before the experience advances — gives designer effects time to play.")]
+    [SerializeField, Min(0f)]
+    private float transferEffectDuration = 0f;
+
     private float stageStartTime;
     private float callStartTime;
 
@@ -134,9 +148,13 @@ public class MessageStageController : MonoBehaviour
         SyraxStage stage =
             manager?.CurrentSession?.current_stage;
 
+        // opening_text is the AI's actual in-character message (what the
+        // "mother" says). body_text is internal scenario direction and must
+        // never be shown to the player. The type guard protects against a
+        // stale stage when the previous event request failed offline.
         string text =
-            stage != null
-                ? stage.body_text
+            stage != null && stage.type == "Message"
+                ? stage.opening_text
                 : "";
 
         if (string.IsNullOrWhiteSpace(text))
@@ -170,6 +188,23 @@ public class MessageStageController : MonoBehaviour
 
         decisionSent = true;
 
+        // Designers' moment: alarm sound, screen effect, custom ending…
+        onTransferMoneyChosen?.Invoke();
+
+        StartCoroutine(
+            SendTransferAfterEffects()
+        );
+    }
+
+    private IEnumerator SendTransferAfterEffects()
+    {
+        if (transferEffectDuration > 0f)
+        {
+            yield return new WaitForSeconds(
+                transferEffectDuration
+            );
+        }
+
         manager.TransferMoney(
             GetReactionTime()
         );
@@ -186,6 +221,10 @@ public class MessageStageController : MonoBehaviour
 
         callStartTime = Time.time;
         callActive = true;
+
+        // Designers' moment: the mother's real voice ("لا، أنا ما طلبت
+        // أي فلوس!"), caller UI animation, etc.
+        onCallMotherChosen?.Invoke();
 
         float duration = 4f;
 
@@ -231,6 +270,9 @@ public class MessageStageController : MonoBehaviour
         }
 
         callWindow.SetActive(false);
+
+        // Designers' moment: closing effects before the experience advances.
+        onVerifiedCallFinished?.Invoke();
 
         manager.CallMotherToVerify(
             GetReactionTime()

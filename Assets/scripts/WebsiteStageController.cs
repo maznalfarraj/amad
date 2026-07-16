@@ -1,6 +1,25 @@
 using UnityEngine;
 using UnityEngine.UI;
 
+/// <summary>
+/// Website stage — static designer-built scenario (no AI content).
+///
+/// Flow: the player gets an SMS notification, opens the messages app and
+/// finds TWO messages that arrived at the same time. One contains the
+/// official bank link, the other a look-alike phishing link. The player
+/// must check the domain name and tap the correct one.
+///
+/// DESIGNERS: build any visuals you want, then hook YOUR buttons to
+///   OnOfficialLinkClicked()  — the genuine bank link
+///   OnPhishingLinkClicked()  — the fake/phishing link
+/// via the Button's OnClick list (drag this "Website Stage" object in and
+/// pick the method). Alternatively drag the buttons into the two fields
+/// below and the hookup happens automatically.
+///
+/// Scoring (backend): official = +points; phishing = 0 points and the
+/// mistake is flagged in the player's behavioral record. Either way the
+/// experience advances WITHOUT showing the result.
+/// </summary>
 public class WebsiteStageController : MonoBehaviour
 {
     [Header("Manager")]
@@ -8,43 +27,40 @@ public class WebsiteStageController : MonoBehaviour
     private SyraxExperienceManager manager;
 
     [Header("Windows")]
+    [Tooltip("The SMS notification window shown first.")]
     [SerializeField]
     private GameObject smsWindow;
 
+    [Tooltip("The messages-app window with the two bank messages.")]
     [SerializeField]
     private GameObject webSmsWindow;
 
-    [Header("Buttons")]
+    [Header("Buttons (optional — designers may instead wire OnClick manually)")]
+    [Tooltip("Opens the messages app from the SMS notification.")]
     [SerializeField]
     private Button openButton;
 
+    [Tooltip("The message/link that is the OFFICIAL bank domain.")]
     [SerializeField]
-    private Button linkOneButton;
+    private Button officialLinkButton;
 
+    [Tooltip("The message/link that is the PHISHING domain.")]
     [SerializeField]
-    private Button linkTwoButton;
-
-    [Header("Correct Link")]
-    [Tooltip("فعليها إذا الرابط الأول في الصورة هو الرابط الصحيح.")]
-    [SerializeField]
-    private bool linkOneIsOfficial = true;
+    private Button phishingLinkButton;
 
     private float stageStartTime;
     private bool decisionSent;
 
     private void Awake()
     {
-        openButton.onClick.AddListener(
-            OpenMessage
-        );
+        if (openButton != null)
+            openButton.onClick.AddListener(OpenMessage);
 
-        linkOneButton.onClick.AddListener(
-            SelectLinkOne
-        );
+        if (officialLinkButton != null)
+            officialLinkButton.onClick.AddListener(OnOfficialLinkClicked);
 
-        linkTwoButton.onClick.AddListener(
-            SelectLinkTwo
-        );
+        if (phishingLinkButton != null)
+            phishingLinkButton.onClick.AddListener(OnPhishingLinkClicked);
     }
 
     private void OnEnable()
@@ -52,60 +68,46 @@ public class WebsiteStageController : MonoBehaviour
         decisionSent = false;
         stageStartTime = Time.time;
 
-        smsWindow.SetActive(true);
-        webSmsWindow.SetActive(false);
+        if (smsWindow != null)
+            smsWindow.SetActive(true);
+
+        if (webSmsWindow != null)
+            webSmsWindow.SetActive(false);
     }
 
-    private void OpenMessage()
+    /// <summary>Shows the messages app. Also usable directly from a Button's OnClick.</summary>
+    public void OpenMessage()
     {
-        smsWindow.SetActive(false);
-        webSmsWindow.SetActive(true);
+        if (smsWindow != null)
+            smsWindow.SetActive(false);
+
+        if (webSmsWindow != null)
+            webSmsWindow.SetActive(true);
     }
 
-    private void SelectLinkOne()
-    {
-        if (decisionSent)
-            return;
-
-        decisionSent = true;
-
-        if (linkOneIsOfficial)
-        {
-            manager.SelectOfficialBankLink(
-                GetReactionTime()
-            );
-        }
-        else
-        {
-            manager.SelectPhishingLink(
-                GetReactionTime()
-            );
-        }
-    }
-
-    private void SelectLinkTwo()
+    /// <summary>Player tapped the OFFICIAL bank link → correct, +points, advance.</summary>
+    public void OnOfficialLinkClicked()
     {
         if (decisionSent)
             return;
 
         decisionSent = true;
 
-        if (linkOneIsOfficial)
-        {
-            manager.SelectPhishingLink(
-                GetReactionTime()
-            );
-        }
-        else
-        {
-            manager.SelectOfficialBankLink(
-                GetReactionTime()
-            );
-        }
+        manager.SelectOfficialBankLink(
+            Time.time - stageStartTime
+        );
     }
 
-    private float GetReactionTime()
+    /// <summary>Player tapped the PHISHING link → 0 points, mistake flagged, advance.</summary>
+    public void OnPhishingLinkClicked()
     {
-        return Time.time - stageStartTime;
+        if (decisionSent)
+            return;
+
+        decisionSent = true;
+
+        manager.SelectPhishingLink(
+            Time.time - stageStartTime
+        );
     }
 }

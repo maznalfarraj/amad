@@ -74,6 +74,21 @@ public class PhoneInteraction : MonoBehaviour
         HoverEnterEventArgs args
     )
     {
+        AnswerInternal();
+    }
+
+    /// <summary>
+    /// Simulates the XR hover that answers the ringing phone. Used by
+    /// SyraxDebugHotkeys for desktop testing (no headset). Safe to call
+    /// any time — it only acts while the phone is actually ringing.
+    /// </summary>
+    public void AnswerNow()
+    {
+        AnswerInternal();
+    }
+
+    private void AnswerInternal()
+    {
         if (!waitingForHover)
             return;
 

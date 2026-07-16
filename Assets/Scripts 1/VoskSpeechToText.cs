@@ -144,7 +144,9 @@ public class VoskSpeechToText : MonoBehaviour
 		VoiceProcessor.OnRecordingStop += VoiceProcessorOnOnRecordingStop;
 
 		if (startMicrophone)
-			VoiceProcessor.StartRecording();
+			// SYRAX: force continuous capture. Auto-detect gating starves the
+			// recognizer of silence frames, so utterances never finalize.
+			VoiceProcessor.StartRecording(autoDetect: false);
 
 		_isInitializing = false;
 		_didInit = true;
@@ -261,7 +263,8 @@ public class VoskSpeechToText : MonoBehaviour
 		{
 			Debug.Log("Start Recording");
 			_running = true;
-			VoiceProcessor.StartRecording();
+			// SYRAX: force continuous capture (see note in Initialize).
+			VoiceProcessor.StartRecording(autoDetect: false);
     	                Task.Run(ThreadedWork).ConfigureAwait(false);
 		}
 		else

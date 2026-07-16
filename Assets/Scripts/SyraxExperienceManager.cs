@@ -7,7 +7,23 @@ using UnityEngine.Networking;
 public class SyraxExperienceManager : MonoBehaviour
 {
     public event Action<ChatResponse> OnChatResponseReceived;
-    [Header("Server")]
+
+    /// <summary>Raised with the recognized player transcript BEFORE it is sent
+    /// to the backend — lets stage controllers react locally (e.g. detect that
+    /// the player spoke the OTP code aloud).</summary>
+    public event Action<string> OnUserSpeechRecognized;
+
+    /// <summary>Raised with true while a backend request is in flight (drive loading UI).</summary>
+    public event Action<bool> OnBusyChanged;
+
+    /// <summary>Raised when a backend request failed after all retries (drive error UI).</summary>
+    public event Action<string> OnRequestFailed;
+
+    [Header("Configuration")]
+    [Tooltip("Central SYRAX config asset (Assets/Settings/SyraxConfig). When assigned, its values override the legacy fields below.")]
+    [SerializeField] private SyraxConfig config;
+
+    [Header("Server (legacy fallback — prefer SyraxConfig)")]
     [SerializeField] private string serverBaseUrl = "http://localhost:3000";
 
     [Header("Experience Objects")]
@@ -44,6 +60,12 @@ private PhoneInteraction phoneInteraction;
 
     public SyraxSession CurrentSession { get; private set; }
 
+    /// <summary>Type of the stage the player is currently in ("PhoneCall" | "Website" | "Message"), or "" when finished.</summary>
+    public string CurrentStageType =>
+        currentStageIndex >= 0 && currentStageIndex < fixedStageOrder.Length
+            ? fixedStageOrder[currentStageIndex]
+            : string.Empty;
+
     private const int PointsPerCorrectDecision = 5;
     private const int MaximumScore = 15;
 
@@ -57,6 +79,37 @@ private PhoneInteraction phoneInteraction;
     private int currentStageIndex;
     private int totalScore;
     private bool isSendingDecision;
+
+    // Time of the last AI reply — used to report the player's hesitation
+    // to the backend's behavioral analysis.
+    private float lastAiReplyTime;
+
+    // ---- Config-aware accessors (config wins, legacy fields are fallback) ----
+    private string BaseUrl =>
+        config != null && !string.IsNullOrWhiteSpace(config.backendBaseUrl)
+            ? config.backendBaseUrl.TrimEnd('/')
+            : serverBaseUrl.TrimEnd('/');
+
+    private int RequestTimeout =>
+        config != null ? config.requestTimeoutSeconds : 60;
+
+    private int MaxRetries =>
+        config != null ? config.maxRetries : 2;
+
+    private float RetryBaseDelay =>
+        config != null ? config.retryBaseDelaySeconds : 1f;
+
+    private int PointsPerCorrect =>
+        config != null ? config.pointsPerCorrectDecision : PointsPerCorrectDecision;
+
+    private int MaxScore =>
+        config != null ? config.maximumScore : MaximumScore;
+
+    private void Awake()
+    {
+        SyraxLogger.Verbose =
+            config == null || config.verboseLogging;
+    }
 
     private void Start()
     {
@@ -75,38 +128,96 @@ private PhoneInteraction phoneInteraction;
         StartCoroutine(LoadActiveSession());
     }
 
+    /// <summary>
+    /// Sends a request built by <paramref name="requestFactory"/> with
+    /// timeout + exponential-backoff retries from SyraxConfig. Retries on
+    /// network errors and 5xx only; 4xx fail immediately (client bug).
+    /// On success calls <paramref name="onSuccess"/> with the body text,
+    /// otherwise <paramref name="onFailure"/> with a description.
+    /// </summary>
+    private IEnumerator SendWithRetry(
+        Func<UnityWebRequest> requestFactory,
+        Action<string> onSuccess,
+        Action<string> onFailure
+    )
+    {
+        OnBusyChanged?.Invoke(true);
+
+        string lastError = "unknown";
+        int attempts = MaxRetries + 1;
+
+        for (int attempt = 1; attempt <= attempts; attempt++)
+        {
+            using UnityWebRequest request = requestFactory();
+            request.timeout = RequestTimeout;
+
+            yield return request.SendWebRequest();
+
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                OnBusyChanged?.Invoke(false);
+                onSuccess?.Invoke(request.downloadHandler.text);
+                yield break;
+            }
+
+            lastError =
+                $"{request.responseCode} {request.error} " +
+                $"{request.downloadHandler?.text}";
+
+            bool retryable =
+                request.result == UnityWebRequest.Result.ConnectionError ||
+                request.responseCode >= 500;
+
+            if (!retryable || attempt == attempts)
+                break;
+
+            float delay =
+                RetryBaseDelay * Mathf.Pow(2f, attempt - 1);
+
+            SyraxLogger.Warn(
+                $"Request failed (attempt {attempt}/{attempts}), retrying in {delay:0.#}s: {lastError}"
+            );
+
+            yield return new WaitForSeconds(delay);
+        }
+
+        OnBusyChanged?.Invoke(false);
+        OnRequestFailed?.Invoke(lastError);
+        onFailure?.Invoke(lastError);
+    }
+
     public IEnumerator LoadActiveSession()
     {
-        string url = $"{serverBaseUrl}/api/unity/session";
+        string url = $"{BaseUrl}/api/unity/session";
 
-        using UnityWebRequest request = UnityWebRequest.Get(url);
-        yield return request.SendWebRequest();
+        yield return SendWithRetry(
+            () => UnityWebRequest.Get(url),
 
-        if (request.result != UnityWebRequest.Result.Success)
-        {
-            Debug.LogError(
-                $"SYRAX session error: {request.error}\n" +
-                $"Response: {request.downloadHandler?.text}"
-            );
-            yield break;
-        }
+            body =>
+            {
+                CurrentSession =
+                    JsonUtility.FromJson<SyraxSession>(body);
 
-        CurrentSession =
-            JsonUtility.FromJson<SyraxSession>(
-                request.downloadHandler.text
-            );
+                if (CurrentSession == null ||
+                    string.IsNullOrWhiteSpace(CurrentSession.session_id))
+                {
+                    SyraxLogger.Error("Invalid SYRAX session payload.");
+                    return;
+                }
 
-        if (CurrentSession == null ||
-            string.IsNullOrWhiteSpace(CurrentSession.session_id))
-        {
-            Debug.LogError("Invalid SYRAX session.");
-            yield break;
-        }
+                currentStageIndex = 0;
+                totalScore = 0;
 
-       currentStageIndex = 0;
-totalScore = 0;
+                SyraxLogger.Log(
+                    $"Session loaded: {CurrentSession.session_id}"
+                );
 
-PrepareCurrentStage();
+                PrepareCurrentStage();
+            },
+
+            error =>
+                SyraxLogger.Error($"SYRAX session error: {error}")
+        );
     }
 
     private void PrepareCurrentStage()
@@ -201,7 +312,7 @@ PrepareCurrentStage();
         result.Phrases.Length == 0
     )
     {
-        Debug.LogWarning(
+        SyraxLogger.Warn(
             $"Vosk returned no phrases:\n{json}"
         );
 
@@ -215,6 +326,13 @@ PrepareCurrentStage();
         recognizedText
     ))
     {
+        // Visible marker: the mic heard speech but the recognizer produced
+        // nothing — usually wrong language (Arabic speech on the EN model)
+        // or unclear audio.
+        SyraxLogger.Warn(
+            "Vosk heard speech but recognized EMPTY text (wrong language for the model, or unclear audio)."
+        );
+
         return;
     }
 
@@ -271,6 +389,35 @@ PrepareCurrentStage();
         );
     }
 
+    /// <summary>
+    /// Website stage v2: the player sees ONE website (image + URL) and
+    /// judges whether the link is genuine or fake. Correct when the
+    /// judgement matches reality.
+    /// </summary>
+    public void SubmitWebsiteJudgement(
+        bool judgedFake,
+        bool urlWasPhishing,
+        float reactionTime
+    )
+    {
+        bool isCorrect = judgedFake == urlWasPhishing;
+
+        string decision = urlWasPhishing
+            ? (judgedFake
+                ? "reported_phishing_url"
+                : "trusted_phishing_url")
+            : (judgedFake
+                ? "rejected_official_url"
+                : "trusted_official_url");
+
+        CompleteStage(
+            "WEBSITE_DECISION",
+            decision,
+            isCorrect,
+            reactionTime
+        );
+    }
+
     public void CallMotherToVerify(float reactionTime)
     {
         CompleteStage(
@@ -299,45 +446,59 @@ PrepareCurrentStage();
             return;
         }
 
+        // Local listeners first (e.g. OTP-shared detection) — they may end
+        // the stage; the backend chat still records the exchange.
+        OnUserSpeechRecognized?.Invoke(speechText);
+
         StartCoroutine(SendChatRequest(speechText));
     }
 
     private IEnumerator SendChatRequest(string userMessage)
     {
-        string url = $"{serverBaseUrl}/api/chat";
+        string url = $"{BaseUrl}/api/chat";
+
+        // How long the player waited since the last AI reply — feeds the
+        // backend's behavioral hesitation analysis.
+        float hesitation =
+            lastAiReplyTime > 0f
+                ? Mathf.Max(0f, Time.time - lastAiReplyTime)
+                : 0f;
 
         ChatRequest body = new ChatRequest
         {
             session_id = CurrentSession.session_id,
-            user_message = userMessage
+            user_message = userMessage,
+            hesitation_seconds = hesitation
         };
 
-        using UnityWebRequest request =
-            CreateJsonPostRequest(
-                url,
-                JsonUtility.ToJson(body)
-            );
+        string json = JsonUtility.ToJson(body);
 
-        yield return request.SendWebRequest();
+        yield return SendWithRetry(
+            () => CreateJsonPostRequest(url, json),
 
-        if (request.result != UnityWebRequest.Result.Success)
-        {
-            Debug.LogError(
-                $"SYRAX chat error: {request.error}\n" +
-                $"Response: {request.downloadHandler?.text}"
-            );
-            yield break;
-        }
+            responseBody =>
+            {
+                ChatResponse response =
+                    JsonUtility.FromJson<ChatResponse>(responseBody);
 
-        ChatResponse response =
-            JsonUtility.FromJson<ChatResponse>(
-                request.downloadHandler.text
-            );
+                if (response == null)
+                {
+                    SyraxLogger.Error("Chat response could not be parsed.");
+                    return;
+                }
 
-        Debug.Log($"AI Reply: {response.reply_text}");
-        OnChatResponseReceived?.Invoke(response);
+                lastAiReplyTime = Time.time;
 
-        // يرسل فريق Unity response.reply_text إلى Text-to-Speech.
+                SyraxLogger.Log(
+                    $"AI Reply ({response.voiceEmotion}/{response.conversationState}): {response.GetDialogue()}"
+                );
+
+                OnChatResponseReceived?.Invoke(response);
+            },
+
+            error =>
+                SyraxLogger.Error($"SYRAX chat error: {error}")
+        );
     }
 
     private void CompleteStage(
@@ -351,7 +512,7 @@ PrepareCurrentStage();
             return;
 
         int pointsAwarded =
-            isCorrect ? PointsPerCorrectDecision : 0;
+            isCorrect ? PointsPerCorrect : 0;
 
         totalScore += pointsAwarded;
 
@@ -383,7 +544,7 @@ PrepareCurrentStage();
         if (CurrentSession != null &&
             !string.IsNullOrWhiteSpace(CurrentSession.session_id))
         {
-            string url = $"{serverBaseUrl}/api/event";
+            string url = $"{BaseUrl}/api/event";
 
             EventRequest body = new EventRequest
             {
@@ -400,7 +561,7 @@ PrepareCurrentStage();
                     is_correct = isCorrect,
                     points_awarded = pointsAwarded,
                     total_score = totalScore,
-                    maximum_score = MaximumScore
+                    maximum_score = MaxScore
                 }
             };
 
@@ -714,7 +875,7 @@ PrepareCurrentStage();
             completionMessageText.text = completionMessage;
 
         if (finalScoreText != null)
-            finalScoreText.text = $"{totalScore} / {MaximumScore}";
+            finalScoreText.text = $"{totalScore} / {MaxScore}";
     }
 
     public string GetDashboardApiUrl()
@@ -723,7 +884,7 @@ PrepareCurrentStage();
             return string.Empty;
 
         return
-            $"{serverBaseUrl}/api/dashboard/" +
+            $"{BaseUrl}/api/dashboard/" +
             $"{CurrentSession.session_id}";
     }
 
@@ -818,6 +979,10 @@ public class ChatRequest
 {
     public string session_id;
     public string user_message;
+
+    // Seconds the player hesitated before speaking — feeds the backend's
+    // behavioral analysis (optional, 0 = unknown).
+    public float hesitation_seconds;
 }
 
 [Serializable]
@@ -826,10 +991,40 @@ public class ChatResponse
     public string session_id;
     public string stage_type;
     public string engine_mode;
+
+    // ---- New contract: dialogue + behavioral analysis ----
+    public string dialogue;              // feed to TTS
+    public string voiceEmotion;          // Calm|Friendly|Warm|Urgent|Pressuring|Concerned|Confident|Frustrated
+    public string conversationState;     // Running|PlayerSafe|PlayerUnsafe|End
+    public BehaviorAnalysis analysis;    // AI's live behavioral read (backend stores it)
+
+    // ---- Legacy aliases (older backend versions) ----
     public string reply_text;
     public string emotion;
     public string conversation_status;
-    public string detected_behavior;
+
+    /// <summary>Dialogue text regardless of backend version.</summary>
+    public string GetDialogue() =>
+        !string.IsNullOrEmpty(dialogue) ? dialogue : reply_text;
+
+    /// <summary>True when the AI considers the conversation over.</summary>
+    public bool IsConversationOver() =>
+        conversationState == "End" || conversation_status == "end";
+}
+
+[Serializable]
+public class BehaviorAnalysis
+{
+    public int trustLevel;                       // 0-100, high = trusts the scammer
+    public int verificationHabit;                // 0-100
+    public int socialEngineeringResistance;      // 0-100
+    public int criticalThinking;                 // 0-100
+    public string emotionalPressure;             // Low|Medium|High
+    public float hesitationSeconds;
+    public bool sharedSensitiveInformation;
+    public int riskScore;                        // 0-100, high = at risk
+    public string playerBehavior;                // Cautious|Suspicious|Confident|Hesitant|Compliant|Impulsive|Neutral
+    public string[] notes;
 }
 
 [Serializable]

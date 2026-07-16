@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5a8efe0e74b9aac4a8617d1819adaae7, type: 3}
+  m_Name: SyraxConfig
+  m_EditorClassIdentifier: Assembly-CSharp::SyraxConfig
+  backendBaseUrl: http://localhost:3000
+  requestTimeoutSeconds: 60
+  maxRetries: 2
+  retryBaseDelaySeconds: 1
+  piperSynthesizeUrl: http://localhost:5000/synthesize
+  piperLengthScale: 1
+  pointsPerCorrectDecision: 5
+  maximumScore: 15
+  verboseLogging: 1
+  piperStartupTest: 0
