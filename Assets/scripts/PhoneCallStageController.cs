@@ -10,6 +10,9 @@ public class PhoneCallStageController : MonoBehaviour
     private SyraxExperienceManager manager;
 
     [SerializeField]
+private PhoneInteraction phoneInteraction;
+
+    [SerializeField]
     private PiperTTSClient piperTTSClient;
 
     [SerializeField]
@@ -262,6 +265,7 @@ public class PhoneCallStageController : MonoBehaviour
     // Public so SyraxDebugHotkeys can start the call during desktop testing.
     public void AnswerCall()
     {
+        phoneInteraction?.StopRingtone();
         if (
             decisionSent ||
             callActive

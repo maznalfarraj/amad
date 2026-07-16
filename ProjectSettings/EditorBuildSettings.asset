@@ -5,15 +5,9 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
-  - enabled: 0
-    path: Assets/Scenes/AmadMazen.unity
-    guid: f27389a33a2824547b71b55e490c81d8
   - enabled: 1
-    path: Assets/Scenes/Amad.unity
+    path: Assets/Scenes/AmadMazen.unity
     guid: 1b0ae8e9b8a1c954cb9824f809fcd258
-  - enabled: 0
-    path: Assets/Scenes/AmadMazen 1.unity
-    guid: 886922dade5cea847a4303d1d0fb436b
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
     com.unity.xr.management.loader_settings: {fileID: 11400000, guid: a71ddcb6145deb64b925d50aa92a092b, type: 2}

@@ -11,6 +11,9 @@ public class PhoneInteraction : MonoBehaviour
     private UnityEngine.XR.Interaction.Toolkit.Interactables.XRBaseInteractable phoneInteractable;
 
     [SerializeField]
+    private GameObject phoneModel;
+
+    [SerializeField]
     private GameObject hologram;
 
     [SerializeField]
@@ -27,7 +30,9 @@ public class PhoneInteraction : MonoBehaviour
         if (phoneInteractable == null)
         {
             phoneInteractable =
-                GetComponent<UnityEngine.XR.Interaction.Toolkit.Interactables.XRBaseInteractable>();
+                GetComponent<
+                    UnityEngine.XR.Interaction.Toolkit.Interactables.XRBaseInteractable
+                >();
         }
     }
 
@@ -55,6 +60,11 @@ public class PhoneInteraction : MonoBehaviour
     {
         waitingForHover = true;
 
+        if (phoneModel != null)
+        {
+            phoneModel.SetActive(true);
+        }
+
         if (hologram != null)
         {
             hologram.SetActive(true);
@@ -77,11 +87,6 @@ public class PhoneInteraction : MonoBehaviour
         AnswerInternal();
     }
 
-    /// <summary>
-    /// Simulates the XR hover that answers the ringing phone. Used by
-    /// SyraxDebugHotkeys for desktop testing (no headset). Safe to call
-    /// any time — it only acts while the phone is actually ringing.
-    /// </summary>
     public void AnswerNow()
     {
         AnswerInternal();
@@ -94,20 +99,37 @@ public class PhoneInteraction : MonoBehaviour
 
         waitingForHover = false;
 
-        if (ringtoneAudioSource != null)
-        {
-            ringtoneAudioSource.Stop();
-        }
-
+        
         if (hologram != null)
         {
             hologram.SetActive(false);
         }
 
+        if (phoneModel != null)
+        {
+            phoneModel.SetActive(false);
+        }
+
         SetPlayerMovement(false);
 
-        manager.ActivateCurrentStage();
+        if (manager != null)
+        {
+            manager.ActivateCurrentStage();
+        }
+        else
+        {
+            Debug.LogError(
+                "PhoneInteraction: manager is missing."
+            );
+        }
     }
+    public void StopRingtone()
+{
+    if (ringtoneAudioSource != null)
+    {
+        ringtoneAudioSource.Stop();
+    }
+}
 
     private void SetPlayerMovement(
         bool enabled

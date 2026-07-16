@@ -118,12 +118,13 @@ private PhoneInteraction phoneInteraction;
         if (completionPanel != null)
             completionPanel.SetActive(false);
 
-        if (transitionCanvasGroup != null)
-        {
-            transitionCanvasGroup.alpha = 0f;
-            transitionCanvasGroup.blocksRaycasts = false;
-            transitionCanvasGroup.interactable = false;
-        }
+      if (transitionCanvasGroup != null)
+{
+    transitionCanvasGroup.alpha = 0f;
+    transitionCanvasGroup.blocksRaycasts = false;
+    transitionCanvasGroup.interactable = false;
+    transitionCanvasGroup.gameObject.SetActive(false);
+}
 
         StartCoroutine(LoadActiveSession());
     }
@@ -527,168 +528,197 @@ private PhoneInteraction phoneInteraction;
         );
     }
 
-    private IEnumerator SendEventAndAdvance(
-        string action,
-        string decision,
-        bool isCorrect,
-        int pointsAwarded,
-        float reactionTime
+   private IEnumerator SendEventAndAdvance(
+    string action,
+    string decision,
+    bool isCorrect,
+    int pointsAwarded,
+    float reactionTime
+)
+{
+    isSendingDecision = true;
+
+    string completionMessage = "";
+
+    // انتقل فورًا
+    currentStageIndex++;
+
+    StartCoroutine(
+        PlayStageTransition(completionMessage)
+    );
+
+    // أرسل القرار للسيرفر بعد بدء الانتقال
+    if (
+        CurrentSession != null &&
+        !string.IsNullOrWhiteSpace(
+            CurrentSession.session_id
+        )
     )
     {
-        isSendingDecision = true;
+        string url =
+            $"{BaseUrl}/api/event";
 
-        string completionMessage = "";
-
-        // Try to send the decision to the server when a valid session exists.
-        // If the internet/server is unavailable, the experience continues locally.
-        if (CurrentSession != null &&
-            !string.IsNullOrWhiteSpace(CurrentSession.session_id))
-        {
-            string url = $"{BaseUrl}/api/event";
-
-            EventRequest body = new EventRequest
+        EventRequest body =
+            new EventRequest
             {
-                session_id = CurrentSession.session_id,
+                session_id =
+                    CurrentSession.session_id,
+
                 action = action,
                 decision = decision,
-                reaction_time = reactionTime,
+                reaction_time =
+                    reactionTime,
+
                 stage_completed = true,
 
-                details = new EventDetails
-                {
-                    stage_type = fixedStageOrder[currentStageIndex],
-                    stage_number = currentStageIndex + 1,
-                    is_correct = isCorrect,
-                    points_awarded = pointsAwarded,
-                    total_score = totalScore,
-                    maximum_score = MaxScore
-                }
+                details =
+                    new EventDetails
+                    {
+                        stage_type =
+                            fixedStageOrder[
+                                currentStageIndex - 1
+                            ],
+
+                        stage_number =
+                            currentStageIndex,
+
+                        is_correct =
+                            isCorrect,
+
+                        points_awarded =
+                            pointsAwarded,
+
+                        total_score =
+                            totalScore,
+
+                        maximum_score =
+                            MaxScore
+                    }
             };
 
-            using UnityWebRequest request =
-                CreateJsonPostRequest(
-                    url,
-                    JsonUtility.ToJson(body)
+        using UnityWebRequest request =
+            CreateJsonPostRequest(
+                url,
+                JsonUtility.ToJson(body)
+            );
+
+        request.timeout = 2;
+
+        yield return request.SendWebRequest();
+
+        if (
+            request.result ==
+            UnityWebRequest.Result.Success
+        )
+        {
+            EventResponse response =
+                JsonUtility.FromJson<EventResponse>(
+                    request.downloadHandler.text
                 );
 
-            request.timeout = 4;
-
-            yield return request.SendWebRequest();
-
-            if (request.result == UnityWebRequest.Result.Success)
+            if (response != null)
             {
-                EventResponse response =
-                    JsonUtility.FromJson<EventResponse>(
-                        request.downloadHandler.text
-                    );
+                completionMessage =
+                    response.completion_message;
 
-               if (response != null)
-{
-    completionMessage =
-        response.completion_message;
-
-    if (response.next_stage != null)
-    {
-        CurrentSession.current_stage =
-            response.next_stage;
-    }
-}
-
-                Debug.Log(
-                    "SYRAX: Decision sent to the server successfully."
-                );
-            }
-            else
-            {
-                Debug.LogWarning(
-                    "SYRAX: Internet or server unavailable. " +
-                    "Continuing the experience locally."
-                );
+                if (
+                    response.next_stage != null
+                )
+                {
+                    CurrentSession.current_stage =
+                        response.next_stage;
+                }
             }
         }
         else
         {
             Debug.LogWarning(
-                "SYRAX: No active server session. " +
-                "Continuing the experience locally."
+                "SYRAX: Decision was not sent, but the experience continued."
             );
         }
+    }
 
-        // Always move to the next stage, whether the request succeeded or failed.
-        currentStageIndex++;
+    isSendingDecision = false;
+}
+   private IEnumerator PlayStageTransition(
+    string completionMessage
+)
+{
+    StopStageAudio();
 
-        yield return StartCoroutine(
-            PlayStageTransition(completionMessage)
+    // 1. خلي الشاشة السوداء تظهر بالكامل.
+    if (transitionCanvasGroup != null)
+    {
+        transitionCanvasGroup.gameObject.SetActive(true);
+        transitionCanvasGroup.blocksRaycasts = true;
+        transitionCanvasGroup.interactable = true;
+
+        if (transitionTitleText != null)
+        {
+            transitionTitleText.text =
+                SyraxArabicText.Fix(
+                    GetTransitionTitle()
+                );
+        }
+
+        yield return FadeCanvasGroup(
+            transitionCanvasGroup,
+            transitionCanvasGroup.alpha,
+            1f,
+            fadeDuration
         );
 
-        isSendingDecision = false;
+        // ضمان أن الشاشة صارت سوداء 100%.
+        transitionCanvasGroup.alpha = 1f;
     }
 
-    private IEnumerator PlayStageTransition(
-        string completionMessage
-    )
+    // 2. اقفلي المرحلة القديمة بينما الشاشة سوداء.
+    DisableAllStages();
+
+    // 3. خلي الشاشة السوداء ثابتة خمس ثوانٍ.
+    yield return new WaitForSecondsRealtime(5f);
+
+    // 4. افتحي المرحلة التالية وهي ما زالت خلف الشاشة السوداء.
+    if (currentStageIndex >= fixedStageOrder.Length)
     {
-        StopStageAudio();
+        ShowCompletion(completionMessage);
+    }
+    else
+    {
+        PrepareCurrentStage();
 
-        if (transitionCanvasGroup != null)
+        GameObject activeObject =
+            GetCurrentStageObject();
+
+        if (
+            activeObject != null &&
+            activeObject.activeInHierarchy
+        )
         {
-            transitionCanvasGroup.blocksRaycasts = true;
-
-            if (transitionTitleText != null)
-            {
-                transitionTitleText.text =
-                    SyraxArabicText.Fix(
-                        GetTransitionTitle()
-                    );
-            }
-
-            yield return FadeCanvasGroup(
-                transitionCanvasGroup,
-                transitionCanvasGroup.alpha,
-                1f,
-                fadeDuration
+            yield return StartCoroutine(
+                AnimateStageEntrance(
+                    activeObject
+                )
             );
-        }
-
-        DisableAllStages();
-
-        if (transitionHoldDuration > 0f)
-        {
-            yield return new WaitForSeconds(
-                transitionHoldDuration
-            );
-        }
-
-        if (currentStageIndex >= fixedStageOrder.Length)
-        {
-            ShowCompletion(completionMessage);
-        }
-        else
-        {
-         PrepareCurrentStage();
-            GameObject activeObject =
-                GetCurrentStageObject();
-
-            if (activeObject != null)
-            {
-                yield return StartCoroutine(
-                    AnimateStageEntrance(activeObject)
-                );
-            }
-        }
-
-        if (transitionCanvasGroup != null)
-        {
-            yield return FadeCanvasGroup(
-                transitionCanvasGroup,
-                transitionCanvasGroup.alpha,
-                0f,
-                fadeDuration
-            );
-
-            transitionCanvasGroup.blocksRaycasts = false;
         }
     }
+
+    // 5. شيل السواد تدريجيًا.
+    if (transitionCanvasGroup != null)
+    {
+        yield return FadeCanvasGroup(
+            transitionCanvasGroup,
+            1f,
+            0f,
+            fadeDuration
+        );
+
+        transitionCanvasGroup.alpha = 0f;
+        transitionCanvasGroup.blocksRaycasts = false;
+        transitionCanvasGroup.interactable = false;
+        transitionCanvasGroup.gameObject.SetActive(false);
+    }
+}
 
     private string GetTransitionTitle()
     {
