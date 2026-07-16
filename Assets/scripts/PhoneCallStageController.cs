@@ -23,6 +23,12 @@ public class PhoneCallStageController : MonoBehaviour
     private GameObject activeCallWindow;
 
     [SerializeField]
+    private GameObject beforeOtpWindow;
+
+    [SerializeField]
+    private GameObject afterOtpWindow;
+
+    [SerializeField]
     private GameObject otpWindow;
 
     [Header("Texts")]
@@ -104,7 +110,10 @@ public class PhoneCallStageController : MonoBehaviour
 
     private void Update()
     {
-        if (!callActive || callTimerText == null)
+        if (
+            !callActive ||
+            callTimerText == null
+        )
         {
             return;
         }
@@ -140,6 +149,16 @@ public class PhoneCallStageController : MonoBehaviour
         if (activeCallWindow != null)
         {
             activeCallWindow.SetActive(false);
+        }
+
+        if (beforeOtpWindow != null)
+        {
+            beforeOtpWindow.SetActive(false);
+        }
+
+        if (afterOtpWindow != null)
+        {
+            afterOtpWindow.SetActive(false);
         }
 
         if (otpWindow != null)
@@ -199,7 +218,10 @@ public class PhoneCallStageController : MonoBehaviour
 
     private void AnswerCall()
     {
-        if (decisionSent || callActive)
+        if (
+            decisionSent ||
+            callActive
+        )
         {
             return;
         }
@@ -216,6 +238,27 @@ public class PhoneCallStageController : MonoBehaviour
             activeCallWindow.SetActive(true);
         }
 
+        // أول نافذة أثناء المكالمة بدون زر إغلاق.
+        if (beforeOtpWindow != null)
+        {
+            beforeOtpWindow.SetActive(true);
+        }
+
+        if (afterOtpWindow != null)
+        {
+            afterOtpWindow.SetActive(false);
+        }
+
+        if (otpWindow != null)
+        {
+            otpWindow.SetActive(false);
+        }
+
+        if (endCallButton != null)
+        {
+            endCallButton.gameObject.SetActive(false);
+        }
+
         callStartTime = Time.time;
         callActive = true;
 
@@ -226,7 +269,9 @@ public class PhoneCallStageController : MonoBehaviour
                 ?.current_stage
                 ?.opening_text;
 
-        if (!string.IsNullOrWhiteSpace(openingText))
+        if (!string.IsNullOrWhiteSpace(
+            openingText
+        ))
         {
             if (activeDialogueText != null)
             {
@@ -247,6 +292,7 @@ public class PhoneCallStageController : MonoBehaviour
 
     private IEnumerator ShowOtpAfterDelay()
     {
+        // أولًا انتظري قبل ظهور رسالة OTP.
         yield return new WaitForSeconds(
             otpDelay
         );
@@ -260,6 +306,17 @@ public class PhoneCallStageController : MonoBehaviour
         }
 
         otpAppeared = true;
+
+        if (beforeOtpWindow != null)
+        {
+            beforeOtpWindow.SetActive(false);
+        }
+
+        // النافذة الثانية فيها زر الإغلاق.
+        if (afterOtpWindow != null)
+        {
+            afterOtpWindow.SetActive(true);
+        }
 
         if (otpText != null)
         {
@@ -282,12 +339,17 @@ public class PhoneCallStageController : MonoBehaviour
             otpVisibleDuration
         );
 
+        // إشعار OTP يختفي، لكن النافذة الثانية وزر الإغلاق يبقون.
         if (otpWindow != null)
         {
             otpWindow.SetActive(false);
         }
 
-        // End Call يبقى ظاهرًا.
+        if (afterOtpWindow != null)
+        {
+            afterOtpWindow.SetActive(true);
+        }
+
         if (endCallButton != null)
         {
             endCallButton.gameObject.SetActive(true);
@@ -320,7 +382,6 @@ public class PhoneCallStageController : MonoBehaviour
             response.reply_text
         );
 
-        // السيرفر اعتبر كلام اللاعب استجابة غير آمنة.
         if (
             response.conversation_status ==
             "user_unsafe"
@@ -410,7 +471,10 @@ public class PhoneCallStageController : MonoBehaviour
 
         if (otpCoroutine != null)
         {
-            StopCoroutine(otpCoroutine);
+            StopCoroutine(
+                otpCoroutine
+            );
+
             otpCoroutine = null;
         }
     }
