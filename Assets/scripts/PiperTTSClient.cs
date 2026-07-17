@@ -22,7 +22,6 @@ public class PiperTTSClient : MonoBehaviour
 
 public bool IsSpeaking => isSpeaking;
 
-
     [SerializeField]
     private float lengthScale = 1f;
 

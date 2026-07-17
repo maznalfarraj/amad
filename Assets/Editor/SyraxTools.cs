@@ -168,10 +168,10 @@ public static class SyraxTools
         // 2. Scene in build settings
         bool sceneInBuild = false;
         foreach (var s in EditorBuildSettings.scenes)
-            if (s.enabled && s.path.EndsWith("AmadMazen.unity")) sceneInBuild = true;
+            if (s.enabled && s.path.EndsWith("Amadd.unity")) sceneInBuild = true;
         Append(sb, sceneInBuild,
-            "AmadMazen scene is in Build Settings",
-            "AmadMazen scene is MISSING from Build Settings",
+            "Amad scene is in Build Settings",
+            "Amad scene is MISSING from Build Settings",
             ref problems);
 
         // 3. IL2CPP + ARM64
