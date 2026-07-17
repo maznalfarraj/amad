@@ -298,9 +298,19 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 81162000}
   m_SourcePrefab: {fileID: 100100000, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
+--- !u!1 &81161997 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1470279098769358944, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
+  m_PrefabInstance: {fileID: 81161996}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &81161998 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 1767192433, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
+  m_PrefabInstance: {fileID: 81161996}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &81161999 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 58445280694286476, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
   m_PrefabInstance: {fileID: 81161996}
   m_PrefabAsset: {fileID: 0}
 --- !u!114 &81162000
@@ -1052,7 +1062,9 @@ MonoBehaviour:
   phoneInteractable: {fileID: 811294249}
   hologram: {fileID: 1228147776}
   ringtoneAudioSource: {fileID: 321509846}
-  locomotionObjects: []
+  locomotionObjects:
+  - {fileID: 81161999}
+  - {fileID: 81161997}
 --- !u!65 &811294251
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -1235,7 +1247,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SyraxExperienceManager
   config: {fileID: 11400000, guid: d97366432a146bf4fbc33e2012198ef7, type: 2}
-  serverBaseUrl: http://10.100.129.194:3000
+  serverBaseUrl: http://172.20.10.4:3000
   phoneCallObject: {fileID: 1913671390715923703}
   websiteObject: {fileID: 3465638487298721870}
   messageObject: {fileID: 6582383924342426556}
@@ -1536,7 +1548,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PiperTTSClient
   config: {fileID: 11400000, guid: d97366432a146bf4fbc33e2012198ef7, type: 2}
-  piperServerUrl: http://10.100.129.194:5000/synthesize
+  piperServerUrl: http://172.20.10.4:5000/synthesize
   outputAudioSource: {fileID: 1187063215}
   lengthScale: 1
 --- !u!1001 &1228147775
@@ -8421,7 +8433,7 @@ MonoBehaviour:
   choicePopup: {fileID: 2094605424155886334}
   callWindow: {fileID: 166153454}
   messageText: {fileID: 4852342851837206103}
-  choicePopupDelay: 2
+  choicePopupDelay: 10
   transferButton: {fileID: 8735281044382891597}
   callButton: {fileID: 5572738873663896124}
   endCallButton: {fileID: 0}
@@ -18380,7 +18392,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 10.7, y: 81.1}
+  m_AnchoredPosition: {x: 6.8, y: 81.1}
   m_SizeDelta: {x: 200, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &7257986370900983556
