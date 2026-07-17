@@ -18,15 +18,10 @@ public class PiperTTSClient : MonoBehaviour
     [Header("Audio")]
     [SerializeField]
     private AudioSource outputAudioSource;
-   public bool IsSpeaking
-{
-    get
-    {
-        return isSpeaking ||
-               (outputAudioSource != null &&
-                outputAudioSource.isPlaying);
-    }
-}
+
+
+public bool IsSpeaking => isSpeaking;
+
 
     [SerializeField]
     private float lengthScale = 1f;
