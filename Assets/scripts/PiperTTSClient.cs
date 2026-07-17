@@ -18,13 +18,21 @@ public class PiperTTSClient : MonoBehaviour
     [Header("Audio")]
     [SerializeField]
     private AudioSource outputAudioSource;
+   public bool IsSpeaking
+{
+    get
+    {
+        return isSpeaking ||
+               (outputAudioSource != null &&
+                outputAudioSource.isPlaying);
+    }
+}
 
     [SerializeField]
     private float lengthScale = 1f;
 
     private bool isSpeaking;
 
-    public bool IsSpeaking => isSpeaking;
 
     private string EffectiveUrl =>
         config != null && !string.IsNullOrWhiteSpace(config.piperSynthesizeUrl)

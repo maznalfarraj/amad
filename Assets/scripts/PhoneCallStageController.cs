@@ -37,9 +37,11 @@ public class PhoneCallStageController : MonoBehaviour
 
     [SerializeField]
     private TMP_Text activeDialogueText;
+[SerializeField]
+private TMP_Text beforeOtpTimerText;
 
-    [SerializeField]
-    private TMP_Text callTimerText;
+[SerializeField]
+private TMP_Text afterOtpTimerText;
 
     [SerializeField]
     private TMP_Text otpText;
@@ -82,6 +84,8 @@ public class PhoneCallStageController : MonoBehaviour
     private string currentOtpCode = "";
 
     private Coroutine otpCoroutine;
+    private bool openingTextPlaying;
+private bool pendingYes;
 
     // Keywords that mean the AI is asking for the verification code —
     // when detected in the AI's dialogue, the OTP message arrives instantly.
@@ -132,33 +136,30 @@ public class PhoneCallStageController : MonoBehaviour
         stageStartTime = Time.time;
     }
 
-    private void Update()
+   private void Update()
+{
+    if (!callActive)
     {
-        if (
-            !callActive ||
-            callTimerText == null
-        )
-        {
-            return;
-        }
-
-        float elapsed =
-            Time.time - callStartTime;
-
-        int minutes =
-            Mathf.FloorToInt(
-                elapsed / 60f
-            );
-
-        int seconds =
-            Mathf.FloorToInt(
-                elapsed % 60f
-            );
-
-        callTimerText.text =
-            $"{minutes:00}:{seconds:00}";
+        return;
     }
 
+    float elapsed = Time.time - callStartTime;
+
+    int minutes = Mathf.FloorToInt(elapsed / 60f);
+    int seconds = Mathf.FloorToInt(elapsed % 60f);
+
+    string timer = $"{minutes:00}:{seconds:00}";
+
+    if (beforeOtpTimerText != null)
+    {
+        beforeOtpTimerText.text = timer;
+    }
+
+    if (afterOtpTimerText != null)
+    {
+        afterOtpTimerText.text = timer;
+    }
+}
     private void ResetStage()
     {
         decisionSent = false;
@@ -203,10 +204,15 @@ public class PhoneCallStageController : MonoBehaviour
             endCallButton.gameObject.SetActive(false);
         }
 
-        if (callTimerText != null)
-        {
-            callTimerText.text = "00:00";
-        }
+       if (beforeOtpTimerText != null)
+{
+    beforeOtpTimerText.text = "00:00";
+}
+
+if (afterOtpTimerText != null)
+{
+    afterOtpTimerText.text = "00:00";
+}
     }
 
     private void LoadStageText()
@@ -323,9 +329,7 @@ public class PhoneCallStageController : MonoBehaviour
                     openingText;
             }
 
-            piperTTSClient?.Speak(
-                openingText
-            );
+            StartCoroutine(PlayOpeningText(openingText));
         }
 
         otpCoroutine =
@@ -333,6 +337,29 @@ public class PhoneCallStageController : MonoBehaviour
                 ShowOtpAfterDelay()
             );
     }
+    private IEnumerator PlayOpeningText(string openingText)
+{
+    openingTextPlaying = true;
+    pendingYes = false;
+
+    piperTTSClient?.Speak(openingText);
+
+    // ينتظر إلى أن ينتهي صوت Piper.
+    while (piperTTSClient != null &&
+           piperTTSClient.IsSpeaking)
+    {
+        yield return null;
+    }
+
+    openingTextPlaying = false;
+
+    // لو اللاعب قال نعم أثناء كلام المحتال، نرسلها بعد انتهاء الكلام.
+    if (pendingYes && callActive && !decisionSent)
+    {
+        pendingYes = false;
+        manager?.SendUserSpeech("نعم");
+    }
+}
 
     private IEnumerator ShowOtpAfterDelay()
     {
@@ -493,6 +520,32 @@ public class PhoneCallStageController : MonoBehaviour
     /// </summary>
     private void HandleUserSpeech(string transcript)
     {
+        string normalizedTranscript =
+    transcript
+        .Trim()
+        .ToLowerInvariant();
+
+if (openingTextPlaying)
+{
+    bool saidYes =
+        normalizedTranscript.Contains("نعم") ||
+        normalizedTranscript.Contains("ايوه") ||
+        normalizedTranscript.Contains("أيوه") ||
+        normalizedTranscript.Contains("ايه") ||
+        normalizedTranscript.Contains("yes");
+
+    if (saidYes)
+    {
+        pendingYes = true;
+
+        SyraxLogger.Log(
+            "Player said YES during opening text. It will be processed after the opening finishes."
+        );
+    }
+
+    // لا نسمح لأي كلام أن يقطع صوت البداية.
+    return;
+}
         if (
             decisionSent ||
             !callActive ||
