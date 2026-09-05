@@ -12,13 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5a8efe0e74b9aac4a8617d1819adaae7, type: 3}
   m_Name: SyraxConfig
   m_EditorClassIdentifier: Assembly-CSharp::SyraxConfig
-  backendBaseUrl: http://10.100.129.194:3000
+  backendBaseUrl: http://172.20.10.4:3000
   requestTimeoutSeconds: 60
   maxRetries: 2
   retryBaseDelaySeconds: 1
-  piperSynthesizeUrl: http://10.100.129.194:5000/synthesize
+  piperSynthesizeUrl: http://172.20.10.4:5000/synthesize
   piperLengthScale: 1
   pointsPerCorrectDecision: 5
   maximumScore: 15
   verboseLogging: 1
-  piperStartupTest: 0
+  piperStartupTest: 1
